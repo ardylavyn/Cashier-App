@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/products/{id}/image', [ProductImageController::class, 'destroy']);
         Route::apiResource('products', ProductsController::class);
 
+        Route::get('/customers/options', [CustomerController::class, 'options']);
         Route::apiResource('customers', CustomerController::class);
     });
 });

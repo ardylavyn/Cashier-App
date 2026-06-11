@@ -30,6 +30,16 @@ class CustomerController extends Controller
         );
     }
 
+    public function options(GetCustomerRequest $request)
+    {
+        $customer = Customer::select('id', 'name')->search($request->search)->orderBy('name')->get();
+
+        return ApiResponse::success(
+            CustomerResource::collection($customer),
+            'Customer List'
+        );
+    }
+
     /**
      * Store a newly created resource in storage.
      */
