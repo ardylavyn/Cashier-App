@@ -22,15 +22,43 @@ class ProductCategoryImageController extends Controller
             );
         }
 
+        // Kalau kategori sudah punya gambar lama, hapus dulu.
         if ($category->image) {
             Storage::disk('public')->delete($category->image);
         }
+
+        // Upload gambar baru dan update kolom image.
         $path = $request->file('image')->store('product_categories', 'public');
         $category->update(['image' => $path]);
 
         return ApiResponse::success(
             new ProductCategoryResource($category),
             'Product Category Image Uploaded'
+        );
+    }
+
+    public function destroy(string $id)
+    {
+        $category = ProductCategory::find($id);
+
+        if (! $category) {
+            return ApiResponse::error(
+                'Product Category Not Found',
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        if ($category->image) {
+            Storage::disk('public')->delete($category->image);
+
+            $category->update([
+                'image' => null,
+            ]);
+        }
+
+        return ApiResponse::success(
+            new ProductCategoryResource($category),
+            'Product Category Image Deleted'
         );
     }
 }

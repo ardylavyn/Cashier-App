@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ProductCategoryImageController;
+use App\Http\Controllers\Api\V1\ProductImageController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\ProductsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -15,6 +17,12 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/product-categories/options', [ProductCategoryController::class, 'options']);
         Route::post('/product-categories/{id}/image', [ProductCategoryImageController::class, 'store']);
+        Route::delete('/product-categories/{id}/image', [ProductCategoryImageController::class, 'destroy']);
         Route::apiResource('product-categories', ProductCategoryController::class);
+
+        Route::get('/products/options', [ProductsController::class, 'options']);
+        Route::post('/products/{id}/image', [ProductImageController::class, 'store']);
+        Route::delete('/products/{id}/image', [ProductImageController::class, 'destroy']);
+        Route::apiResource('products', ProductsController::class);
     });
 });
