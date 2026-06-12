@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\ProductImageController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductsController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -28,5 +29,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/customers/options', [CustomerController::class, 'options']);
         Route::apiResource('customers', CustomerController::class);
+
+        Route::get('/transactions/options', [TransactionController::class, 'options']);
+        Route::apiResource('transactions', TransactionController::class);
+        Route::post('/transactions/{id}/refund', [TransactionController::class, 'refund']);
     });
 });
