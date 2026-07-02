@@ -32,13 +32,10 @@ class Products extends Model
         return $query;
     }
 
-    public function scopeByCategory($query, $categoryName)
+    public function scopeByCategory($query, $categoryId)
     {
-        return $query->when($categoryName, function ($query, $categoryName) {
-            // Untuk setiap category yang ditemukan melalui relasi productCategory, lakukan pengecekan. Dan bawa variabel $categoryName (yang berasal dari input user) ke dalam function ini supaya bisa digunakan untuk filtering.
-            $query->whereHas('productCategory', function ($category) use ($categoryName) {
-                $category->where('name', 'like', "%{$categoryName}%");
-            });
+        return $query->when($categoryId, function ($query, $categoryId) {
+            $query->where('product_category_id', $categoryId);
         });
     }
 

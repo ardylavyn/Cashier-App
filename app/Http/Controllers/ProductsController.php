@@ -10,9 +10,24 @@ use App\Http\Resources\PaginatedResource;
 use App\Http\Resources\ProductsResource;
 use App\Models\Products;
 use Illuminate\Http\Response;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+use Override;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
-class ProductsController extends Controller
+class ProductsController extends Controller implements HasMiddleware
 {
+    #[Override]
+    public static function middleware()
+    {
+        return [
+            new Middleware(PermissionMiddleware::using('view_products'), only: ['index', 'show', 'options']),
+            new Middleware(PermissionMiddleware::using('create_products'), only: ['store']),
+            new Middleware(PermissionMiddleware::using('edit_products'), only: ['update']),
+            new Middleware(PermissionMiddleware::using('delete_products'), only: ['destroy']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */

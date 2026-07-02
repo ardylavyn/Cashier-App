@@ -27,7 +27,7 @@ class TransactionResource extends JsonResource
             'subtotal' => $this->subtotal,
             'tax' => $this->tax,
             'total' => $this->total,
-
+            'created_at' => $this->created_at,
         ];
     }
 }

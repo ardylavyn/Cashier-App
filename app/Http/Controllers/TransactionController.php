@@ -15,10 +15,25 @@ use App\Models\TransactionRefund;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
+use Override;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
-class TransactionController extends Controller
+class TransactionController extends Controller implements HasMiddleware
 {
+    #[Override]
+    public static function middleware()
+    {
+        return [
+            new Middleware(PermissionMiddleware::using('view_transactions'), only: ['index', 'show', 'options']),
+            new Middleware(PermissionMiddleware::using('create_transactions'), only: ['store']),
+            new Middleware(PermissionMiddleware::using('view_refunds'), only: ['refunds']),
+            new Middleware(PermissionMiddleware::using('create_refunds'), only: ['refund']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -108,7 +123,7 @@ class TransactionController extends Controller
             $total = $subtotal + $tax;
 
             // Generate Code (TRX-TIMESTAMP-RANDOM)
-            $code = 'TRX - '.time().'-'.rand(1000, 9999);
+            $code = 'TRX-'.date('His-dmy').'-'.rand(1000, 9999);
 
             // Setelah berhasil insert ke tabel transaction, database membuat ID baru untuk transaksi tersebut, lalu Laravel mengembalikan data transaksi yang baru dibuat (termasuk ID-nya) ke variabel $transaction. ID tersebut kemudian digunakan untuk membuat transaction_items.
             $transaction = Transaction::create([
@@ -170,11 +185,10 @@ class TransactionController extends Controller
                 );
             }
 
-            // kalau status refund tidak sama dengan completed artinya udah pernah refund sebelumnya, kalau belum lanjut membuat alasan kenapa refund
-            if ($transaction->status !== 'completed') {
-                return ApiResponse::error(
-                    'Transaction Already Refunded',
-                    Response::HTTP_BAD_REQUEST
+            // kalau status refund sama dengan refunded artinya udah pernah refund sebelumnya dan qty nya udah abis. lanjut membuat alasan kenapa refund
+            if ($transaction->status === 'refunded') {
+                throw new Exception(
+                    'Transaction Already Fully Refunded'
                 );
             }
 
@@ -185,7 +199,7 @@ class TransactionController extends Controller
             ]);
 
             foreach ($request->items as $refundItem) {
-                // awalnya cari transaction_item_id di $refundItem yang diambil dari inputan request user (RefundTransactionRequest), kalau udah ketemu terus karena ada with productnya maka product juga ikut diambil.
+
                 $item = TransactionItem::with('product')
                     ->find($refundItem['transaction_item_id']);
 
@@ -195,7 +209,6 @@ class TransactionController extends Controller
                     );
                 }
 
-                // Pastikan item milik transaksi yang direfund
                 if ($item->transaction_id != $transaction->id) {
                     throw new Exception(
                         'Transaction Item does not belong to this Transaction'
@@ -204,18 +217,25 @@ class TransactionController extends Controller
 
                 $availableRefund = $item->quantity - $item->refunded_quantity;
 
-                // Tidak boleh refund melebihi qty yang dibeli
                 if ($refundItem['quantity'] > $availableRefund) {
                     throw new Exception(
                         "Refund quantity exceeds purchased quantity for product {$item->product->name}"
                     );
                 }
 
-                // Kembalikan stock
-                $item->product->increment('stock', $refundItem['quantity']);
+                // Kembalikan stock hanya jika dicentang
+                if ($refundItem['return_to_stock']) {
+                    $item->product->increment(
+                        'stock',
+                        $refundItem['quantity']
+                    );
+                }
 
-                // Tambah refunded_quantity
-                $item->increment('refunded_quantity', $refundItem['quantity']);
+                // Tambah qty refund
+                $item->increment(
+                    'refunded_quantity',
+                    $refundItem['quantity']
+                );
             }
 
             // Reload data terbaru
@@ -257,12 +277,38 @@ class TransactionController extends Controller
         }
     }
 
+    public function refunds(GetTransactionRequest $request)
+    {
+        $transactions = Transaction::with([
+            'customer',
+            'transactionItems.product',
+            'refund',
+        ])
+            ->whereIn('status', [
+                'refunded',
+                'partially_refunded',
+            ])
+            ->whereHas('refund')
+            ->join('transaction_refunds', 'transactions.id', '=', 'transaction_refunds.transaction_id')
+            ->orderByDesc('transaction_refunds.created_at')
+            ->select('transactions.*')
+            ->paginate($request->limit ?? 10);
+
+        return ApiResponse::success(
+            new PaginatedResource(
+                $transactions,
+                TransactionResource::class
+            ),
+            'Refund List'
+        );
+    }
+
     /**
      * Display the specified resource.
      */
     public function show(string $id)
     {
-        $transaction = Transaction::with(['customer', 'transactionItems.product'])->find($id);
+        $transaction = Transaction::with(['customer', 'transactionItems.product', 'refund'])->find($id);
 
         if (! $transaction) {
             return ApiResponse::error(

@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('customers', CustomerController::class);
 
         Route::get('/transactions/options', [TransactionController::class, 'options']);
+        Route::get('/transactions/refunds', [TransactionController::class, 'refunds']);
         Route::apiResource('transactions', TransactionController::class);
         Route::post('/transactions/{id}/refund', [TransactionController::class, 'refund']);
     });

@@ -9,6 +9,7 @@ class TransactionRefund extends Model
     protected $fillable = [
         'transaction_id',
         'reason',
+        'return_to_stock',
     ];
 
     public function transaction()

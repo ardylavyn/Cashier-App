@@ -16,6 +16,7 @@ class TransactionItemRecource extends JsonResource
 
             'price' => $this->price,
             'quantity' => $this->quantity,
+            'refunded_quantity' => $this->refunded_quantity,
             'subtotal' => $this->subtotal,
         ];
     }

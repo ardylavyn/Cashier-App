@@ -8,10 +8,22 @@ use App\Http\Requests\UploadProductImageRequest;
 use App\Http\Resources\ProductsResource;
 use App\Models\Products;
 use Illuminate\Http\Response;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Storage;
+use Override;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
-class ProductImageController extends Controller
+class ProductImageController extends Controller implements HasMiddleware
 {
+    #[Override]
+    public static function middleware()
+    {
+        return [
+            new Middleware(PermissionMiddleware::using('edit_products')),
+        ];
+    }
+
     public function store(UploadProductImageRequest $request, string $id)
     {
         $product = Products::find($id);

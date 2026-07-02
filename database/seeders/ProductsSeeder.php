@@ -16,7 +16,7 @@ class ProductsSeeder extends Seeder
         $categories = ProductCategory::all();
 
         foreach ($categories as $category) {
-            Products::factory()->count(10)->create([
+            Products::factory()->count(7)->create([
                 // 'product_category_id' dari table migration
                 'product_category_id' => $category->id,
             ]);

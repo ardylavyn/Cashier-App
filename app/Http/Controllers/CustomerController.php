@@ -10,9 +10,24 @@ use App\Http\Resources\CustomerResource;
 use App\Http\Resources\PaginatedResource;
 use App\Models\Customer;
 use Illuminate\Http\Response;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+use Override;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
-class CustomerController extends Controller
+class CustomerController extends Controller implements HasMiddleware
 {
+    #[Override]
+    public static function middleware()
+    {
+        return [
+            new Middleware(PermissionMiddleware::using('view_customers'), only: ['index', 'show', 'options']),
+            new Middleware(PermissionMiddleware::using('create_customers'), only: ['store']),
+            new Middleware(PermissionMiddleware::using('edit_customers'), only: ['update']),
+            new Middleware(PermissionMiddleware::using('delete_customers'), only: ['destroy']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */
