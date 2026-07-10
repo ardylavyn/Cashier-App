@@ -12,6 +12,7 @@ use App\Models\Products;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\TransactionRefund;
+use App\Service\WhatsappService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -72,6 +73,9 @@ class TransactionController extends Controller implements HasMiddleware
      */
     public function store(StoreTransactionRequest $request)
     {
+
+        $data = $request->validated();
+
         try {
             DB::beginTransaction();
 
@@ -81,8 +85,10 @@ class TransactionController extends Controller implements HasMiddleware
             // untuk menyimpan item-item transaksi sementara.
             $itemData = [];
 
+            $itemForNotification = [];
+
             // seluruh inputan user yang ada di dalam items diambil satu per satu lalu disimpan sementara ke $item.
-            foreach ($request->items as $item) {
+            foreach ($data['items'] as $item) {
 
                 // Ambil nilai dari key product_id yang ada di dalam variabel $item, yang awalnya berasal dari data request user yang sudah divalidasi oleh StoreTransactionRequest.
                 // Misalnya $item['product_id'] -> 9 maka laravel menjalankan Products::find(9);
@@ -116,6 +122,12 @@ class TransactionController extends Controller implements HasMiddleware
                     // stock dan name yang ada di $product akan disimpan di key model utk suatu saat dibutuhkan kembali
                     'model' => $product,
                 ];
+
+                $itemForNotification[] = [
+                    'name' => $product->name,
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $itemSubtotal,
+                ];
             }
 
             // calculate Tax (Asumming 11%)
@@ -136,22 +148,47 @@ class TransactionController extends Controller implements HasMiddleware
             ]);
 
             // Ambil setiap barang yang ada di keranjang sementara (($itemData) yang di atas tadi) satu per satu lalu simpan ke variabel $data
-            foreach ($itemData as $data) {
+            foreach ($itemData as $item) {
                 // Simpan detail barang yang dibeli ke tabel transaction_items
                 TransactionItem::create([
                     'transaction_id' => $transaction->id,
-                    'product_id' => $data['product_id'],
-                    'price' => $data['price'],
-                    'quantity' => $data['quantity'],
-                    'subtotal' => $data['subtotal'],
+                    'product_id' => $item['product_id'],
+                    'price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $item['subtotal'],
                 ]);
 
                 // dapet data stock karena tadi disimpan pada key model yang di atas.
                 // Kurangi stock sebanyak (...) dengan quantity yang tadi udah diinputkan sama user (kasir).
-                $data['model']->decrement('stock', $data['quantity']);
+                $item['model']->decrement('stock', $item['quantity']);
             }
 
             DB::commit();
+
+            $transaction->load([
+                'customer',
+                'transactionItems.product',
+            ]);
+
+            if (! empty($data['send_notification']) && $transaction->customer?->phone) {
+
+                $whatsAppService = new WhatsappService;
+
+                $whatsAppService->sendTransactionReceipt(
+                    $transaction->customer->phone,
+                    [
+                        'code' => $transaction->code,
+                        'date' => $transaction->created_at->format('d/m/Y H:i'),
+                        'customer_name' => $transaction->customer->name,
+                        'items' => $itemForNotification,
+                        'subtotal' => $transaction->subtotal,
+                        'tax' => $transaction->tax,
+                        'total' => $transaction->total,
+                        'paid' => $request->paid,
+                        'change' => $request->paid - $transaction->total,
+                    ]
+                );
+            }
 
             return ApiResponse::success(
                 new TransactionResource($transaction->load(['customer', 'transactionItems.product'])),

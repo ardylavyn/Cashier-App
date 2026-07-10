@@ -35,6 +35,10 @@ class StoreTransactionRequest extends FormRequest
             // Untuk SEMUA item yang ada di dalam array items, cek field berikut..
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+
+            'send_notification' => 'nullable|boolean',
+
+            'paid' => 'nullable|numeric|min:0',
         ];
     }
 }

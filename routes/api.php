@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ProductCategoryImageController;
 use App\Http\Controllers\Api\V1\ProductImageController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\TransactionController;
@@ -14,6 +15,8 @@ Route::prefix('v1')->group(function () {
 
     // Sanctum itu gerbang, jadi butuh kunci (token)
     Route::middleware('auth:sanctum')->group(function () {
+        Route::get('dashboard/statistics', [DashboardController::class, 'statistics']);
+
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
